@@ -1,7 +1,8 @@
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.image import MIMEImage
+from jinja2 import Environment, FileSystemLoader
+
 
 from src import config
 
@@ -29,13 +30,22 @@ def send_email(recipient, formatted_address, report_id):
     msgAlternative = MIMEMultipart('alternative')
     msgRoot.attach(msgAlternative)
 
-    # We reference the image in the IMG SRC attribute by the ID we give it below
-    msgText = MIMEText(
-        f'<b>Here is your property report</b><br><br><a href="{base_domain}/report/{report_id}" style="background-color: #4CAF50; border: none; color: white; padding: 15px 32px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin: 4px 2px; cursor: pointer;">Download Report</a>', 'html')
+    # Define the environment and load the template
+    env = Environment(loader=FileSystemLoader(
+        searchpath=f"/opt/src/templates"))
+
+    template = env.get_template('report.html')
+
+    # Render the template with the provided variables
+    html_content = template.render(
+        formatted_address=formatted_address,
+        report_url=f"{base_domain}/report/{report_id}")
+
+    msgText = MIMEText(html_content, 'html')
     msgAlternative.attach(msgText)
 
     # Send the email
-    smtp = smtplib.SMTP('217.160.185.253', 2500)
+    smtp = smtplib.SMTP(config.EMAIL_IP, config.EMAIL_PORT)
     # smtp.login(strFrom, '')
     smtp.sendmail(strFrom, strTo, msgRoot.as_string())
     smtp.quit()
